@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -26,7 +26,9 @@ type Order = {
   date: string;
   items: CartItem[];
   total: number;
-  status: 'delivered' | 'preparing' | 'cancelled';
+  status: 'delivered' | 'preparing' | 'cancelled' | 'cooking' | 'on-the-way';
+  estimatedTime?: number;
+  courierPosition?: { lat: number; lng: number };
 };
 
 type Review = {
@@ -91,6 +93,18 @@ const mockOrders: Order[] = [
     ],
     total: 640,
     status: 'delivered'
+  },
+  {
+    id: 3,
+    date: new Date().toISOString().split('T')[0],
+    items: [
+      { ...menuItems[6], quantity: 1 },
+      { ...menuItems[14], quantity: 1 }
+    ],
+    total: 900,
+    status: 'on-the-way',
+    estimatedTime: 15,
+    courierPosition: { lat: 55.7558, lng: 37.6173 }
   }
 ];
 
@@ -105,6 +119,28 @@ export default function Index() {
   const [activeTab, setActiveTab] = useState('home');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [userBonus, setUserBonus] = useState(450);
+  const [orders, setOrders] = useState<Order[]>(mockOrders);
+  const [trackingOrderId, setTrackingOrderId] = useState<number | null>(null);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setOrders(prevOrders => 
+        prevOrders.map(order => {
+          if (order.status === 'on-the-way' && order.estimatedTime && order.estimatedTime > 0) {
+            const newTime = order.estimatedTime - 1;
+            if (newTime === 0) {
+              toast.success('🎉 Ваш заказ доставлен! Приятного аппетита!');
+              return { ...order, status: 'delivered' as const, estimatedTime: 0 };
+            }
+            return { ...order, estimatedTime: newTime };
+          }
+          return order;
+        })
+      );
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const addToCart = (item: MenuItem) => {
     const existingItem = cart.find(i => i.id === item.id);
@@ -439,7 +475,7 @@ export default function Index() {
           <div className="animate-fade-in">
             <h2 className="text-4xl font-black mb-8">История заказов 📦</h2>
             <div className="space-y-4">
-              {mockOrders.map(order => (
+              {orders.map(order => (
                 <Card key={order.id} className="hover:shadow-lg transition-shadow">
                   <CardHeader>
                     <div className="flex justify-between items-start">
@@ -447,12 +483,100 @@ export default function Index() {
                         <CardTitle className="text-xl">Заказ #{order.id}</CardTitle>
                         <CardDescription>{new Date(order.date).toLocaleDateString('ru-RU')}</CardDescription>
                       </div>
-                      <Badge variant={order.status === 'delivered' ? 'default' : 'secondary'}>
-                        {order.status === 'delivered' ? '✅ Доставлен' : '🚚 В пути'}
+                      <Badge variant={order.status === 'delivered' ? 'default' : 'secondary'} className="animate-pulse">
+                        {order.status === 'delivered' && '✅ Доставлен'}
+                        {order.status === 'cooking' && '👨‍🍳 Готовится'}
+                        {order.status === 'on-the-way' && '🚚 В пути'}
+                        {order.status === 'preparing' && '📋 Принят'}
                       </Badge>
                     </div>
                   </CardHeader>
                   <CardContent>
+                    {order.status === 'on-the-way' && order.estimatedTime && (
+                      <div className="mb-6 bg-gradient-to-r from-primary/20 to-accent/20 rounded-2xl p-6 border-2 border-primary animate-scale-in">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-3">
+                            <div className="text-4xl animate-bounce">🚚</div>
+                            <div>
+                              <p className="text-lg font-bold">Курьер в пути!</p>
+                              <p className="text-sm text-muted-foreground">Заказ доставляется</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-3xl font-black text-primary">{order.estimatedTime}</p>
+                            <p className="text-sm text-muted-foreground">минут</p>
+                          </div>
+                        </div>
+                        
+                        <div className="relative bg-muted rounded-xl p-4 mb-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-semibold">Маршрут доставки</span>
+                            <Button 
+                              size="sm" 
+                              variant="ghost"
+                              onClick={() => setTrackingOrderId(trackingOrderId === order.id ? null : order.id)}
+                            >
+                              <Icon name={trackingOrderId === order.id ? "ChevronUp" : "MapPin"} size={16} />
+                            </Button>
+                          </div>
+                          
+                          {trackingOrderId === order.id && (
+                            <div className="mt-4 space-y-3 animate-fade-in">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
+                                  <Icon name="Home" className="text-white" size={16} />
+                                </div>
+                                <div>
+                                  <p className="font-semibold">Пиццерия PizzaGame</p>
+                                  <p className="text-xs text-muted-foreground">ул. Пушкина, 15</p>
+                                </div>
+                              </div>
+                              
+                              <div className="relative pl-4 border-l-2 border-dashed border-primary ml-4 py-2">
+                                <div className="absolute -left-2 top-1/2 w-4 h-4 bg-primary rounded-full animate-pulse"></div>
+                                <p className="text-sm font-semibold">🚚 Курьер Иван</p>
+                                <p className="text-xs text-muted-foreground">Движется к вам</p>
+                              </div>
+                              
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center">
+                                  <Icon name="MapPin" className="text-white" size={16} />
+                                </div>
+                                <div>
+                                  <p className="font-semibold">Ваш адрес</p>
+                                  <p className="text-xs text-muted-foreground">ул. Ленина, 42, кв. 15</p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          
+                          <div className="mt-3 bg-background rounded-lg p-3">
+                            <div className="flex justify-between text-xs mb-1">
+                              <span>🏠 Пиццерия</span>
+                              <span>📍 Вы</span>
+                            </div>
+                            <div className="relative h-2 bg-muted-foreground/20 rounded-full overflow-hidden">
+                              <div 
+                                className="absolute top-0 left-0 h-full bg-gradient-to-r from-primary to-accent rounded-full transition-all duration-1000"
+                                style={{ width: `${100 - (order.estimatedTime / 30 * 100)}%` }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline" className="flex-1">
+                            <Icon name="Phone" size={16} className="mr-2" />
+                            Позвонить курьеру
+                          </Button>
+                          <Button size="sm" variant="outline" className="flex-1">
+                            <Icon name="MessageSquare" size={16} className="mr-2" />
+                            Написать
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    
                     <div className="space-y-2">
                       {order.items.map(item => (
                         <div key={item.id} className="flex justify-between items-center">
