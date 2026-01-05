@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import Icon from '@/components/ui/icon';
 import { toast } from 'sonner';
 import PizzaConstructor from '@/components/PizzaConstructor';
+import PromoNotification from '@/components/PromoNotification';
 
 type MenuItem = {
   id: number;
@@ -841,6 +842,13 @@ export default function Index() {
           onClose={() => setShowConstructor(false)}
         />
       )}
+
+      <PromoNotification
+        onCopyPromoCode={(code) => {
+          setPromoCode(code);
+          toast.success(`🎟️ Промокод ${code} скопирован! Примените его в корзине`);
+        }}
+      />
     </div>
   );
 }
