@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
+import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import Icon from '@/components/ui/icon';
 import { toast } from 'sonner';
 import PizzaConstructor from '@/components/PizzaConstructor';
@@ -123,6 +125,16 @@ export default function Index() {
   const [orders, setOrders] = useState<Order[]>(mockOrders);
   const [trackingOrderId, setTrackingOrderId] = useState<number | null>(null);
   const [showConstructor, setShowConstructor] = useState(false);
+  const [promoCode, setPromoCode] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState<{ code: string; discount: number; type: 'percent' | 'fixed' } | null>(null);
+  const [useBonuses, setUseBonuses] = useState(false);
+
+  const promoCodes = [
+    { code: 'PIZZA20', discount: 20, type: 'percent' as const, description: 'Скидка 20% на всё' },
+    { code: 'NEWUSER', discount: 300, type: 'fixed' as const, description: 'Скидка 300₽ для новых' },
+    { code: 'GAME50', discount: 50, type: 'percent' as const, description: 'Игровая скидка 50%' },
+    { code: 'COMBO10', discount: 10, type: 'percent' as const, description: 'Скидка 10% на комбо' },
+  ];
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -173,8 +185,31 @@ export default function Index() {
     }
   };
 
-  const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const cartSubtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const cartItemsCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+  const applyPromoCode = () => {
+    const promo = promoCodes.find(p => p.code === promoCode.toUpperCase());
+    if (promo) {
+      setAppliedPromo(promo);
+      toast.success(`🎉 Промокод ${promo.code} применён! ${promo.description}`);
+      setPromoCode('');
+    } else {
+      toast.error('❌ Промокод не найден');
+    }
+  };
+
+  const calculateDiscount = () => {
+    if (!appliedPromo) return 0;
+    if (appliedPromo.type === 'percent') {
+      return Math.round(cartSubtotal * (appliedPromo.discount / 100));
+    }
+    return Math.min(appliedPromo.discount, cartSubtotal);
+  };
+
+  const bonusDiscount = useBonuses ? Math.min(userBonus, cartSubtotal) : 0;
+  const promoDiscount = calculateDiscount();
+  const cartTotal = Math.max(0, cartSubtotal - promoDiscount - bonusDiscount);
 
   const renderMenuItem = (item: MenuItem) => (
     <Card key={item.id} className="hover:shadow-lg transition-all duration-300 animate-fade-in hover-scale">
@@ -420,20 +455,126 @@ export default function Index() {
                 ))}
                 
                 <Separator />
+
+                <Card className="bg-gradient-to-br from-secondary/20 to-primary/10">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <span>🎟️</span> Промокод и бонусы
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Введите промокод"
+                        value={promoCode}
+                        onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                        onKeyDown={(e) => e.key === 'Enter' && applyPromoCode()}
+                        className="flex-1 font-semibold"
+                      />
+                      <Button onClick={applyPromoCode} disabled={!promoCode}>
+                        Применить
+                      </Button>
+                    </div>
+
+                    {appliedPromo && (
+                      <div className="bg-accent/20 rounded-xl p-3 flex items-center justify-between animate-scale-in">
+                        <div className="flex items-center gap-2">
+                          <span className="text-2xl">🎉</span>
+                          <div>
+                            <p className="font-bold">{appliedPromo.code}</p>
+                            <p className="text-xs text-muted-foreground">{appliedPromo.description}</p>
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setAppliedPromo(null);
+                            toast.info('Промокод удалён');
+                          }}
+                        >
+                          <Icon name="X" size={16} />
+                        </Button>
+                      </div>
+                    )}
+
+                    <Separator />
+
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">🪙</span>
+                        <div>
+                          <p className="font-bold">Списать бонусы</p>
+                          <p className="text-xs text-muted-foreground">Доступно: {userBonus} бонусов</p>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={useBonuses}
+                        onCheckedChange={(checked) => {
+                          setUseBonuses(checked);
+                          if (checked) {
+                            toast.success(`Списываем ${Math.min(userBonus, cartSubtotal)} бонусов!`);
+                          }
+                        }}
+                        disabled={userBonus === 0}
+                      />
+                    </div>
+
+                    <div className="bg-muted rounded-xl p-4 space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Сумма заказа:</span>
+                        <span className="font-semibold">{cartSubtotal} ₽</span>
+                      </div>
+                      {promoDiscount > 0 && (
+                        <div className="flex justify-between text-sm text-accent">
+                          <span>Скидка по промокоду:</span>
+                          <span className="font-semibold">-{promoDiscount} ₽</span>
+                        </div>
+                      )}
+                      {bonusDiscount > 0 && (
+                        <div className="flex justify-between text-sm text-secondary">
+                          <span>Скидка бонусами:</span>
+                          <span className="font-semibold">-{bonusDiscount} ₽</span>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
                 
                 <Card className="bg-primary text-primary-foreground">
                   <CardContent className="p-6">
-                    <div className="flex justify-between items-center text-2xl font-black">
-                      <span>Итого:</span>
-                      <span>{cartTotal} ₽</span>
+                    <div className="flex justify-between items-center mb-4">
+                      <span className="text-2xl font-black">Итого к оплате:</span>
+                      <div className="text-right">
+                        {(promoDiscount > 0 || bonusDiscount > 0) && (
+                          <p className="text-sm line-through opacity-70">{cartSubtotal} ₽</p>
+                        )}
+                        <p className="text-4xl font-black">{cartTotal} ₽</p>
+                      </div>
                     </div>
+                    {(promoDiscount > 0 || bonusDiscount > 0) && (
+                      <div className="bg-accent/20 rounded-lg p-2 mb-4 text-center">
+                        <p className="text-sm font-semibold">
+                          🎉 Вы экономите {promoDiscount + bonusDiscount} ₽!
+                        </p>
+                      </div>
+                    )}
                     <Button
                       size="lg"
                       variant="secondary"
-                      className="w-full mt-4 text-lg font-bold"
+                      className="w-full text-lg font-bold"
                       onClick={() => {
-                        toast.success('🎉 Заказ оформлен! Доставим через 30 минут');
+                        const earnedBonus = Math.round(cartTotal * 0.1);
+                        toast.success(`🎉 Заказ оформлен! Доставим через 30 минут. Начислено ${earnedBonus} бонусов!`);
+                        if (useBonuses) {
+                          setUserBonus(userBonus - bonusDiscount + earnedBonus);
+                        } else {
+                          setUserBonus(userBonus + earnedBonus);
+                        }
                         setCart([]);
+                        setAppliedPromo(null);
+                        setUseBonuses(false);
+                        setPromoCode('');
                       }}
                     >
                       Оформить заказ
