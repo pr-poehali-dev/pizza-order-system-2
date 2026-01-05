@@ -64,9 +64,11 @@ const doughInfo = {
 type PizzaConstructorProps = {
   onAddToCart: (pizza: { name: string; price: number; description: string; emoji: string }) => void;
   onClose: () => void;
+  cartItemsCount: number;
+  onOpenCart: () => void;
 };
 
-export default function PizzaConstructor({ onAddToCart, onClose }: PizzaConstructorProps) {
+export default function PizzaConstructor({ onAddToCart, onClose, cartItemsCount, onOpenCart }: PizzaConstructorProps) {
   const [size, setSize] = useState<PizzaSize>('medium');
   const [dough, setDough] = useState<DoughType>('thin');
   const [selectedIngredients, setSelectedIngredients] = useState<Set<string>>(new Set(['tomato-sauce', 'mozzarella']));
@@ -127,19 +129,29 @@ export default function PizzaConstructor({ onAddToCart, onClose }: PizzaConstruc
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-fade-in">
       <Card className="w-full max-w-4xl max-h-[90vh] overflow-hidden animate-scale-in">
-        <CardHeader className="border-b-4 border-primary bg-gradient-to-r from-primary/10 to-accent/10">
+        <CardHeader className="border-b">
           <div className="flex justify-between items-start">
             <div>
-              <CardTitle className="text-3xl font-black flex items-center gap-2">
+              <CardTitle className="text-2xl font-bold flex items-center gap-2">
                 🎨 Конструктор пиццы
               </CardTitle>
-              <CardDescription className="text-base mt-2">
+              <CardDescription className="mt-2">
                 Создай свою уникальную пиццу!
               </CardDescription>
             </div>
-            <Button variant="ghost" size="icon" onClick={onClose}>
-              <Icon name="X" size={24} />
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="ghost" size="icon" onClick={onOpenCart} className="relative">
+                <Icon name="ShoppingCart" size={20} />
+                {cartItemsCount > 0 && (
+                  <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-white text-xs flex items-center justify-center">
+                    {cartItemsCount}
+                  </span>
+                )}
+              </Button>
+              <Button variant="ghost" size="icon" onClick={onClose}>
+                <Icon name="X" size={20} />
+              </Button>
+            </div>
           </div>
         </CardHeader>
 
@@ -316,7 +328,7 @@ export default function PizzaConstructor({ onAddToCart, onClose }: PizzaConstruc
           </CardContent>
         </ScrollArea>
 
-        <CardFooter className="border-t-2 border-border bg-card p-6">
+        <CardFooter className="border-t bg-card p-6">
           <div className="w-full space-y-4">
             <div className="flex justify-between items-center">
               <div>

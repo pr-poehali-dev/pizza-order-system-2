@@ -3,14 +3,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import Icon from '@/components/ui/icon';
 import { toast } from 'sonner';
 import PizzaConstructor from '@/components/PizzaConstructor';
-import PromoNotification from '@/components/PromoNotification';
+import AuthModal from '@/components/AuthModal';
+import CheckoutModal, { OrderData } from '@/components/CheckoutModal';
 
 type MenuItem = {
   id: number;
@@ -31,36 +31,33 @@ type Order = {
   items: CartItem[];
   total: number;
   status: 'delivered' | 'preparing' | 'cancelled' | 'cooking' | 'on-the-way';
-  estimatedTime?: number;
-  courierPosition?: { lat: number; lng: number };
+  orderData?: OrderData;
 };
 
-type Review = {
-  id: number;
-  userName: string;
-  rating: number;
-  comment: string;
-  date: string;
+type User = {
+  phone: string;
+  name: string;
+  bonus: number;
 };
 
 const menuItems: MenuItem[] = [
-  { id: 1, name: 'Маргарита', description: 'Классическая пицца с томатами и моцареллой', price: 450, emoji: '🍕', category: 'pizza', rating: 4.8, popular: true },
-  { id: 2, name: 'Пепперони', description: 'Острая пицца с колбасой пепперони', price: 520, emoji: '🌶️', category: 'pizza', rating: 4.9, popular: true },
-  { id: 3, name: 'Четыре сыра', description: 'Моцарелла, пармезан, горгонзола, чеддер', price: 580, emoji: '🧀', category: 'pizza', rating: 4.7 },
-  { id: 4, name: 'Гавайская', description: 'Ветчина, ананасы, сыр моцарелла', price: 500, emoji: '🍍', category: 'pizza', rating: 4.5 },
-  { id: 5, name: 'Мексиканская', description: 'Острая говядина, перец халапеньо, кукуруза', price: 550, emoji: '🌮', category: 'pizza', rating: 4.6 },
-  { id: 6, name: 'Вегетарианская', description: 'Шампиньоны, томаты, перец, оливки', price: 480, emoji: '🥗', category: 'pizza', rating: 4.4 },
-  { id: 7, name: 'Мясная', description: 'Говядина, бекон, курица, ветчина', price: 620, emoji: '🥩', category: 'pizza', rating: 4.9 },
-  { id: 8, name: 'Морская', description: 'Креветки, кальмары, мидии, лосось', price: 680, emoji: '🦐', category: 'pizza', rating: 4.7 },
-  { id: 9, name: 'Барбекю', description: 'Курица, соус барбекю, красный лук', price: 540, emoji: '🍗', category: 'pizza', rating: 4.6 },
-  { id: 10, name: 'Цезарь', description: 'Курица, салат романо, соус цезарь', price: 560, emoji: '🥬', category: 'pizza', rating: 4.5 },
-  { id: 11, name: 'Грибная', description: 'Шампиньоны, белые грибы, трюфель', price: 590, emoji: '🍄', category: 'pizza', rating: 4.8 },
-  { id: 12, name: 'Дьябола', description: 'Острая салями, перец чили, халапеньо', price: 570, emoji: '🔥', category: 'pizza', rating: 4.7 },
-  { id: 13, name: 'Карбонара', description: 'Бекон, сливочный соус, пармезан, яйцо', price: 600, emoji: '🥓', category: 'pizza', rating: 4.8 },
+  { id: 1, name: 'Маргарита', description: 'Томаты, моцарелла, базилик', price: 450, emoji: '🍕', category: 'pizza', rating: 4.8, popular: true },
+  { id: 2, name: 'Пепперони', description: 'Пепперони, моцарелла, томатный соус', price: 520, emoji: '🍕', category: 'pizza', rating: 4.9, popular: true },
+  { id: 3, name: 'Четыре сыра', description: 'Моцарелла, пармезан, горгонзола, чеддер', price: 580, emoji: '🍕', category: 'pizza', rating: 4.7 },
+  { id: 4, name: 'Гавайская', description: 'Ветчина, ананасы, моцарелла', price: 500, emoji: '🍕', category: 'pizza', rating: 4.5 },
+  { id: 5, name: 'Мексиканская', description: 'Острая говядина, халапеньо, кукуруза', price: 550, emoji: '🍕', category: 'pizza', rating: 4.6 },
+  { id: 6, name: 'Вегетарианская', description: 'Шампиньоны, томаты, перец, оливки', price: 480, emoji: '🍕', category: 'pizza', rating: 4.4 },
+  { id: 7, name: 'Мясная', description: 'Говядина, бекон, курица, ветчина', price: 620, emoji: '🍕', category: 'pizza', rating: 4.9 },
+  { id: 8, name: 'Морская', description: 'Креветки, кальмары, мидии, лосось', price: 680, emoji: '🍕', category: 'pizza', rating: 4.7 },
+  { id: 9, name: 'Барбекю', description: 'Курица, соус барбекю, красный лук', price: 540, emoji: '🍕', category: 'pizza', rating: 4.6 },
+  { id: 10, name: 'Цезарь', description: 'Курица, салат романо, соус цезарь', price: 560, emoji: '🍕', category: 'pizza', rating: 4.5 },
+  { id: 11, name: 'Грибная', description: 'Шампиньоны, белые грибы, трюфель', price: 590, emoji: '🍕', category: 'pizza', rating: 4.8 },
+  { id: 12, name: 'Дьябола', description: 'Острая салями, перец чили, халапеньо', price: 570, emoji: '🍕', category: 'pizza', rating: 4.7 },
+  { id: 13, name: 'Карбонара', description: 'Бекон, сливочный соус, пармезан, яйцо', price: 600, emoji: '🍕', category: 'pizza', rating: 4.8 },
   
   { id: 14, name: 'Куриные крылышки', description: 'Острые крылышки с соусом BBQ', price: 280, emoji: '🍗', category: 'snack', rating: 4.7 },
   { id: 15, name: 'Картофель фри', description: 'Хрустящий картофель с соусом', price: 180, emoji: '🍟', category: 'snack', rating: 4.5 },
-  { id: 16, name: 'Чесночные гренки', description: 'Хрустящие гренки с чесночным соусом', price: 150, emoji: '🧄', category: 'snack', rating: 4.6 },
+  { id: 16, name: 'Чесночные гренки', description: 'Хрустящие гренки с чесночным соусом', price: 150, emoji: '🥖', category: 'snack', rating: 4.6 },
   { id: 17, name: 'Моцарелла стики', description: 'Жареные палочки из моцареллы', price: 250, emoji: '🧀', category: 'snack', rating: 4.8 },
   { id: 18, name: 'Нагетсы', description: 'Куриные нагетсы с соусом на выбор', price: 220, emoji: '🍗', category: 'snack', rating: 4.4 },
   
@@ -68,7 +65,7 @@ const menuItems: MenuItem[] = [
   { id: 20, name: 'Сок апельсиновый', description: 'Свежевыжатый сок 0.3л', price: 150, emoji: '🍊', category: 'drink', rating: 4.7 },
   { id: 21, name: 'Лимонад', description: 'Домашний лимонад 0.5л', price: 140, emoji: '🍋', category: 'drink', rating: 4.8 },
   { id: 22, name: 'Морс', description: 'Клюквенный морс 0.5л', price: 130, emoji: '🫐', category: 'drink', rating: 4.6 },
-  { id: 23, name: 'Чай', description: 'Зеленый или черный чай', price: 100, emoji: '🍵', category: 'drink', rating: 4.5 },
+  { id: 23, name: 'Чай', description: 'Зеленый или черный чай', price: 100, emoji: '☕', category: 'drink', rating: 4.5 },
   
   { id: 24, name: 'Комбо Классик', description: 'Пицца Маргарита + напиток + картофель фри', price: 650, emoji: '🎁', category: 'combo', popular: true },
   { id: 25, name: 'Комбо Мясное', description: 'Пицца Мясная + крылышки + 2 напитка', price: 950, emoji: '🎁', category: 'combo', popular: true },
@@ -77,55 +74,14 @@ const menuItems: MenuItem[] = [
   { id: 28, name: 'Комбо на двоих', description: '2 пиццы на выбор + закуска + 2 напитка', price: 1400, emoji: '🎁', category: 'combo' },
 ];
 
-const mockOrders: Order[] = [
-  {
-    id: 1,
-    date: '2024-01-15',
-    items: [
-      { ...menuItems[0], quantity: 2 },
-      { ...menuItems[13], quantity: 1 }
-    ],
-    total: 1180,
-    status: 'delivered'
-  },
-  {
-    id: 2,
-    date: '2024-01-10',
-    items: [
-      { ...menuItems[1], quantity: 1 },
-      { ...menuItems[18], quantity: 1 }
-    ],
-    total: 640,
-    status: 'delivered'
-  },
-  {
-    id: 3,
-    date: new Date().toISOString().split('T')[0],
-    items: [
-      { ...menuItems[6], quantity: 1 },
-      { ...menuItems[14], quantity: 1 }
-    ],
-    total: 900,
-    status: 'on-the-way',
-    estimatedTime: 15,
-    courierPosition: { lat: 55.7558, lng: 37.6173 }
-  }
-];
-
-const mockReviews: Review[] = [
-  { id: 1, userName: 'Алексей М.', rating: 5, comment: 'Отличная пицца! Доставили быстро и горячую 🔥', date: '2024-01-15' },
-  { id: 2, userName: 'Мария К.', rating: 5, comment: 'Очень вкусно, особенно понравилась Маргарита!', date: '2024-01-14' },
-  { id: 3, userName: 'Дмитрий П.', rating: 4, comment: 'Хорошая пицца, но можно побольше начинки', date: '2024-01-12' },
-  { id: 4, userName: 'Елена С.', rating: 5, comment: 'Лучшая пиццерия в городе! Комбо очень выгодное 🎉', date: '2024-01-10' },
-];
-
 export default function Index() {
-  const [activeTab, setActiveTab] = useState('home');
+  const [activeTab, setActiveTab] = useState('menu');
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [userBonus, setUserBonus] = useState(450);
-  const [orders, setOrders] = useState<Order[]>(mockOrders);
-  const [trackingOrderId, setTrackingOrderId] = useState<number | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [showConstructor, setShowConstructor] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
+  const [showCheckout, setShowCheckout] = useState(false);
   const [promoCode, setPromoCode] = useState('');
   const [appliedPromo, setAppliedPromo] = useState<{ code: string; discount: number; type: 'percent' | 'fixed' } | null>(null);
   const [useBonuses, setUseBonuses] = useState(false);
@@ -136,26 +92,6 @@ export default function Index() {
     { code: 'GAME50', discount: 50, type: 'percent' as const, description: 'Игровая скидка 50%' },
     { code: 'COMBO10', discount: 10, type: 'percent' as const, description: 'Скидка 10% на комбо' },
   ];
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setOrders(prevOrders => 
-        prevOrders.map(order => {
-          if (order.status === 'on-the-way' && order.estimatedTime && order.estimatedTime > 0) {
-            const newTime = order.estimatedTime - 1;
-            if (newTime === 0) {
-              toast.success('🎉 Ваш заказ доставлен! Приятного аппетита!');
-              return { ...order, status: 'delivered' as const, estimatedTime: 0 };
-            }
-            return { ...order, estimatedTime: newTime };
-          }
-          return order;
-        })
-      );
-    }, 60000);
-
-    return () => clearInterval(interval);
-  }, []);
 
   const addToCart = (item: MenuItem | { name: string; price: number; description: string; emoji: string }) => {
     const menuItem = 'id' in item ? item : {
@@ -170,7 +106,7 @@ export default function Index() {
     } else {
       setCart([...cart, { ...menuItem, quantity: 1 }]);
     }
-    toast.success(`${menuItem.emoji} ${menuItem.name} добавлена в корзину!`);
+    toast.success(`${menuItem.name} добавлен в корзину!`);
   };
 
   const removeFromCart = (id: number) => {
@@ -193,10 +129,10 @@ export default function Index() {
     const promo = promoCodes.find(p => p.code === promoCode.toUpperCase());
     if (promo) {
       setAppliedPromo(promo);
-      toast.success(`🎉 Промокод ${promo.code} применён! ${promo.description}`);
+      toast.success(`Промокод ${promo.code} применён!`);
       setPromoCode('');
     } else {
-      toast.error('❌ Промокод не найден');
+      toast.error('Промокод не найден');
     }
   };
 
@@ -208,65 +144,105 @@ export default function Index() {
     return Math.min(appliedPromo.discount, cartSubtotal);
   };
 
-  const bonusDiscount = useBonuses ? Math.min(userBonus, cartSubtotal) : 0;
+  const bonusDiscount = useBonuses && user ? Math.min(user.bonus, cartSubtotal) : 0;
   const promoDiscount = calculateDiscount();
   const cartTotal = Math.max(0, cartSubtotal - promoDiscount - bonusDiscount);
 
+  const handleAuth = (phone: string, name: string) => {
+    setUser({ phone, name, bonus: 450 });
+  };
+
+  const handleCheckout = () => {
+    if (!user) {
+      setShowAuth(true);
+      return;
+    }
+    setShowCheckout(true);
+  };
+
+  const handleOrderConfirm = (orderData: OrderData) => {
+    const earnedBonus = Math.round(cartTotal * 0.1);
+    const newOrder: Order = {
+      id: Date.now(),
+      date: new Date().toISOString(),
+      items: [...cart],
+      total: cartTotal,
+      status: 'preparing',
+      orderData,
+    };
+
+    setOrders([newOrder, ...orders]);
+    
+    if (user) {
+      const updatedBonus = useBonuses ? user.bonus - bonusDiscount + earnedBonus : user.bonus + earnedBonus;
+      setUser({ ...user, bonus: updatedBonus });
+    }
+
+    toast.success(`Заказ оформлен! Начислено ${earnedBonus} бонусов`);
+    setCart([]);
+    setAppliedPromo(null);
+    setUseBonuses(false);
+    setPromoCode('');
+    setShowCheckout(false);
+    setActiveTab('orders');
+  };
+
   const renderMenuItem = (item: MenuItem) => (
-    <Card key={item.id} className="hover:shadow-lg transition-all duration-300 animate-fade-in hover-scale">
-      <CardHeader>
-        <div className="flex justify-between items-start">
-          <div className="text-5xl mb-2">{item.emoji}</div>
-          {item.popular && (
-            <Badge className="bg-accent text-accent-foreground">🔥 Хит</Badge>
-          )}
+    <Card key={item.id} className="hover:shadow-md transition-shadow border-border group">
+      <CardContent className="p-4">
+        <div className="aspect-square bg-muted rounded-lg mb-3 flex items-center justify-center text-6xl">
+          {item.emoji}
         </div>
-        <CardTitle className="text-xl">{item.name}</CardTitle>
-        <CardDescription className="text-sm">{item.description}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="flex justify-between items-center">
-          <span className="text-2xl font-bold text-primary">{item.price} ₽</span>
-          {item.rating && (
-            <div className="flex items-center gap-1">
-              <Icon name="Star" className="text-yellow-500 fill-yellow-500" size={16} />
-              <span className="text-sm font-semibold">{item.rating}</span>
-            </div>
-          )}
+        <div className="space-y-2">
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="font-semibold text-base leading-tight">{item.name}</h3>
+            {item.popular && (
+              <Badge variant="secondary" className="text-xs">Хит</Badge>
+            )}
+          </div>
+          <p className="text-sm text-muted-foreground line-clamp-2">{item.description}</p>
+          <div className="flex items-center justify-between pt-2">
+            <span className="text-xl font-bold">{item.price} ₽</span>
+            <Button onClick={() => addToCart(item)} size="sm">
+              <Icon name="Plus" size={16} />
+            </Button>
+          </div>
         </div>
       </CardContent>
-      <CardFooter>
-        <Button onClick={() => addToCart(item)} className="w-full font-semibold" size="lg">
-          <Icon name="ShoppingCart" size={18} className="mr-2" />
-          В корзину
-        </Button>
-      </CardFooter>
     </Card>
   );
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-50 bg-card border-b-4 border-primary shadow-lg">
+      <header className="sticky top-0 z-40 bg-white border-b">
         <div className="container mx-auto px-4 py-4">
           <div className="flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <div className="text-5xl animate-bounce-in">🍕</div>
-              <div>
-                <h1 className="text-3xl font-black text-primary">PizzaGame</h1>
-                <p className="text-xs text-muted-foreground">Вкусно играем!</p>
-              </div>
+            <div className="flex items-center gap-2">
+              <div className="text-3xl">🍕</div>
+              <h1 className="text-2xl font-bold">Синица</h1>
             </div>
             <div className="flex gap-2">
+              {user ? (
+                <Button variant="ghost" onClick={() => setActiveTab('profile')}>
+                  <Icon name="User" size={20} className="mr-2" />
+                  {user.name}
+                </Button>
+              ) : (
+                <Button variant="ghost" onClick={() => setShowAuth(true)}>
+                  <Icon name="User" size={20} className="mr-2" />
+                  Войти
+                </Button>
+              )}
               <Button
-                variant={activeTab === 'cart' ? 'default' : 'outline'}
+                variant="default"
                 onClick={() => setActiveTab('cart')}
                 className="relative"
               >
                 <Icon name="ShoppingCart" size={20} />
                 {cartItemsCount > 0 && (
-                  <Badge className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 flex items-center justify-center bg-accent">
+                  <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
                     {cartItemsCount}
-                  </Badge>
+                  </span>
                 )}
               </Button>
             </div>
@@ -274,124 +250,53 @@ export default function Index() {
         </div>
       </header>
 
-      <nav className="bg-card border-b-2 border-border sticky top-[88px] z-40">
-        <div className="container mx-auto px-4">
-          <div className="flex gap-2 overflow-x-auto py-3">
-            {[
-              { id: 'home', label: 'Главная', icon: 'Home' },
-              { id: 'menu', label: 'Меню', icon: 'UtensilsCrossed' },
-              { id: 'orders', label: 'Заказы', icon: 'Package' },
-              { id: 'profile', label: 'Профиль', icon: 'User' },
-              { id: 'reviews', label: 'Отзывы', icon: 'Star' },
-            ].map(tab => (
-              <Button
-                key={tab.id}
-                variant={activeTab === tab.id ? 'default' : 'ghost'}
-                onClick={() => setActiveTab(tab.id)}
-                className="flex items-center gap-2 font-semibold whitespace-nowrap"
-              >
-                <Icon name={tab.icon as any} size={18} />
-                {tab.label}
-              </Button>
-            ))}
-          </div>
-        </div>
-      </nav>
-
-      <main className="container mx-auto px-4 py-8">
-        {activeTab === 'home' && (
-          <div className="space-y-8 animate-fade-in">
-            <section className="bg-gradient-to-r from-primary to-accent text-primary-foreground rounded-3xl p-8 md:p-12 shadow-2xl">
-              <div className="max-w-2xl">
-                <h2 className="text-5xl font-black mb-4">Горячая пицца за 30 минут! 🚀</h2>
-                <p className="text-xl mb-6 opacity-90">Или пицца бесплатно! Играй и выигрывай бонусы</p>
-                <Button size="lg" variant="secondary" className="text-lg font-bold" onClick={() => setActiveTab('menu')}>
-                  Выбрать пиццу
-                  <Icon name="ArrowRight" size={20} className="ml-2" />
-                </Button>
-              </div>
-            </section>
-
-            <section className="bg-gradient-to-br from-secondary/30 to-primary/20 rounded-3xl p-8 border-4 border-primary/20">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-3xl font-black flex items-center gap-2">
-                  <span>🎨</span> Собери свою пиццу!
-                </h3>
-              </div>
-              <p className="text-lg mb-6 text-muted-foreground">
-                Создай уникальную пиццу из 25+ ингредиентов на свой вкус!
-              </p>
-              <Button
-                size="lg"
-                onClick={() => setShowConstructor(true)}
-                className="text-lg font-bold"
-              >
-                <Icon name="Sparkles" size={20} className="mr-2" />
-                Открыть конструктор
-              </Button>
-            </section>
-
-            <section>
-              <h3 className="text-3xl font-black mb-6 flex items-center gap-2">
-                <span>🔥</span> Популярные позиции
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {menuItems.filter(item => item.popular).map(renderMenuItem)}
-              </div>
-            </section>
-
-            <section>
-              <h3 className="text-3xl font-black mb-6 flex items-center gap-2">
-                <span>🎁</span> Комбо-наборы
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {menuItems.filter(item => item.category === 'combo').slice(0, 3).map(renderMenuItem)}
-              </div>
-            </section>
-          </div>
-        )}
-
+      <main className="container mx-auto px-4 py-6">
         {activeTab === 'menu' && (
-          <div className="animate-fade-in">
-            <div className="flex justify-between items-center mb-8">
-              <h2 className="text-4xl font-black">Меню 🍕</h2>
-              <Button
-                size="lg"
-                onClick={() => setShowConstructor(true)}
-                className="font-bold"
-              >
-                <Icon name="Sparkles" size={20} className="mr-2" />
-                Собрать свою пиццу
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold">Меню</h2>
+              <Button variant="outline" onClick={() => setShowConstructor(true)}>
+                <Icon name="Sparkles" size={18} className="mr-2" />
+                Создать свою пиццу
               </Button>
             </div>
+
             <Tabs defaultValue="pizza" className="w-full">
-              <TabsList className="grid w-full grid-cols-4 mb-8 h-auto">
-                <TabsTrigger value="pizza" className="text-lg font-semibold py-3">🍕 Пиццы</TabsTrigger>
-                <TabsTrigger value="snack" className="text-lg font-semibold py-3">🍟 Закуски</TabsTrigger>
-                <TabsTrigger value="drink" className="text-lg font-semibold py-3">🥤 Напитки</TabsTrigger>
-                <TabsTrigger value="combo" className="text-lg font-semibold py-3">🎁 Комбо</TabsTrigger>
+              <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent">
+                <TabsTrigger value="pizza" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary">
+                  Пиццы
+                </TabsTrigger>
+                <TabsTrigger value="snack" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary">
+                  Закуски
+                </TabsTrigger>
+                <TabsTrigger value="drink" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary">
+                  Напитки
+                </TabsTrigger>
+                <TabsTrigger value="combo" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary">
+                  Комбо
+                </TabsTrigger>
               </TabsList>
               
-              <TabsContent value="pizza">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <TabsContent value="pizza" className="mt-6">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {menuItems.filter(item => item.category === 'pizza').map(renderMenuItem)}
                 </div>
               </TabsContent>
               
-              <TabsContent value="snack">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <TabsContent value="snack" className="mt-6">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {menuItems.filter(item => item.category === 'snack').map(renderMenuItem)}
                 </div>
               </TabsContent>
               
-              <TabsContent value="drink">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <TabsContent value="drink" className="mt-6">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {menuItems.filter(item => item.category === 'drink').map(renderMenuItem)}
                 </div>
               </TabsContent>
               
-              <TabsContent value="combo">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <TabsContent value="combo" className="mt-6">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {menuItems.filter(item => item.category === 'combo').map(renderMenuItem)}
                 </div>
               </TabsContent>
@@ -400,54 +305,57 @@ export default function Index() {
         )}
 
         {activeTab === 'cart' && (
-          <div className="animate-fade-in">
-            <h2 className="text-4xl font-black mb-8">Корзина 🛒</h2>
+          <div>
+            <h2 className="text-2xl font-bold mb-6">Корзина</h2>
             {cart.length === 0 ? (
               <Card className="p-12 text-center">
                 <div className="text-6xl mb-4">🛒</div>
-                <p className="text-xl text-muted-foreground mb-6">Корзина пуста</p>
-                <Button size="lg" onClick={() => setActiveTab('menu')}>
+                <p className="text-lg text-muted-foreground mb-4">Корзина пуста</p>
+                <Button onClick={() => setActiveTab('menu')}>
                   Перейти в меню
                 </Button>
               </Card>
             ) : (
-              <div className="space-y-6">
+              <div className="space-y-4">
                 {cart.map(item => (
-                  <Card key={item.id} className="hover:shadow-lg transition-shadow">
-                    <CardContent className="p-6">
+                  <Card key={item.id}>
+                    <CardContent className="p-4">
                       <div className="flex items-center gap-4">
                         <div className="text-4xl">{item.emoji}</div>
                         <div className="flex-1">
-                          <h3 className="text-xl font-bold">{item.name}</h3>
+                          <h3 className="font-semibold">{item.name}</h3>
                           <p className="text-sm text-muted-foreground">{item.description}</p>
                         </div>
-                        <div className="flex items-center gap-4">
-                          <div className="flex items-center gap-2 bg-muted rounded-lg p-1">
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2 border rounded-lg">
                             <Button
-                              size="sm"
+                              size="icon"
                               variant="ghost"
                               onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                              className="h-8 w-8"
                             >
-                              <Icon name="Minus" size={16} />
+                              <Icon name="Minus" size={14} />
                             </Button>
-                            <span className="w-8 text-center font-bold">{item.quantity}</span>
+                            <span className="w-8 text-center font-semibold">{item.quantity}</span>
                             <Button
-                              size="sm"
+                              size="icon"
                               variant="ghost"
                               onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                              className="h-8 w-8"
                             >
-                              <Icon name="Plus" size={16} />
+                              <Icon name="Plus" size={14} />
                             </Button>
                           </div>
-                          <span className="text-2xl font-bold text-primary w-24 text-right">
+                          <span className="text-lg font-bold w-20 text-right">
                             {item.price * item.quantity} ₽
                           </span>
                           <Button
-                            size="sm"
-                            variant="destructive"
+                            size="icon"
+                            variant="ghost"
                             onClick={() => removeFromCart(item.id)}
+                            className="h-8 w-8"
                           >
-                            <Icon name="Trash2" size={16} />
+                            <Icon name="Trash2" size={14} />
                           </Button>
                         </div>
                       </div>
@@ -457,382 +365,210 @@ export default function Index() {
                 
                 <Separator />
 
-                <Card className="bg-gradient-to-br from-secondary/20 to-primary/10">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <span>🎟️</span> Промокод и бонусы
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
+                <Card>
+                  <CardContent className="p-4 space-y-4">
                     <div className="flex gap-2">
                       <Input
-                        placeholder="Введите промокод"
+                        placeholder="Промокод"
                         value={promoCode}
                         onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
                         onKeyDown={(e) => e.key === 'Enter' && applyPromoCode()}
-                        className="flex-1 font-semibold"
                       />
-                      <Button onClick={applyPromoCode} disabled={!promoCode}>
+                      <Button onClick={applyPromoCode} disabled={!promoCode} variant="secondary">
                         Применить
                       </Button>
                     </div>
 
                     {appliedPromo && (
-                      <div className="bg-accent/20 rounded-xl p-3 flex items-center justify-between animate-scale-in">
-                        <div className="flex items-center gap-2">
-                          <span className="text-2xl">🎉</span>
-                          <div>
-                            <p className="font-bold">{appliedPromo.code}</p>
-                            <p className="text-xs text-muted-foreground">{appliedPromo.description}</p>
-                          </div>
-                        </div>
+                      <div className="bg-muted rounded-lg p-3 flex items-center justify-between">
+                        <span className="font-semibold text-sm">{appliedPromo.code}</span>
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => {
-                            setAppliedPromo(null);
-                            toast.info('Промокод удалён');
-                          }}
+                          onClick={() => setAppliedPromo(null)}
+                          className="h-7"
                         >
-                          <Icon name="X" size={16} />
+                          <Icon name="X" size={14} />
                         </Button>
                       </div>
                     )}
 
-                    <Separator />
-
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl">🪙</span>
-                        <div>
-                          <p className="font-bold">Списать бонусы</p>
-                          <p className="text-xs text-muted-foreground">Доступно: {userBonus} бонусов</p>
+                    {user && user.bonus > 0 && (
+                      <>
+                        <Separator />
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-semibold text-sm">Списать бонусы</p>
+                            <p className="text-xs text-muted-foreground">Доступно: {user.bonus} ₽</p>
+                          </div>
+                          <Switch
+                            checked={useBonuses}
+                            onCheckedChange={setUseBonuses}
+                          />
                         </div>
-                      </div>
-                      <Switch
-                        checked={useBonuses}
-                        onCheckedChange={(checked) => {
-                          setUseBonuses(checked);
-                          if (checked) {
-                            toast.success(`Списываем ${Math.min(userBonus, cartSubtotal)} бонусов!`);
-                          }
-                        }}
-                        disabled={userBonus === 0}
-                      />
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-4 space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Сумма:</span>
+                      <span>{cartSubtotal} ₽</span>
                     </div>
-
-                    <div className="bg-muted rounded-xl p-4 space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Сумма заказа:</span>
-                        <span className="font-semibold">{cartSubtotal} ₽</span>
+                    {promoDiscount > 0 && (
+                      <div className="flex justify-between text-sm text-green-600">
+                        <span>Скидка:</span>
+                        <span>-{promoDiscount} ₽</span>
                       </div>
-                      {promoDiscount > 0 && (
-                        <div className="flex justify-between text-sm text-accent">
-                          <span>Скидка по промокоду:</span>
-                          <span className="font-semibold">-{promoDiscount} ₽</span>
-                        </div>
-                      )}
-                      {bonusDiscount > 0 && (
-                        <div className="flex justify-between text-sm text-secondary">
-                          <span>Скидка бонусами:</span>
-                          <span className="font-semibold">-{bonusDiscount} ₽</span>
-                        </div>
-                      )}
+                    )}
+                    {bonusDiscount > 0 && (
+                      <div className="flex justify-between text-sm text-green-600">
+                        <span>Бонусы:</span>
+                        <span>-{bonusDiscount} ₽</span>
+                      </div>
+                    )}
+                    <Separator />
+                    <div className="flex justify-between text-lg font-bold">
+                      <span>Итого:</span>
+                      <span>{cartTotal} ₽</span>
                     </div>
                   </CardContent>
                 </Card>
                 
-                <Card className="bg-primary text-primary-foreground">
-                  <CardContent className="p-6">
-                    <div className="flex justify-between items-center mb-4">
-                      <span className="text-2xl font-black">Итого к оплате:</span>
-                      <div className="text-right">
-                        {(promoDiscount > 0 || bonusDiscount > 0) && (
-                          <p className="text-sm line-through opacity-70">{cartSubtotal} ₽</p>
-                        )}
-                        <p className="text-4xl font-black">{cartTotal} ₽</p>
+                <Button onClick={handleCheckout} className="w-full" size="lg">
+                  Оформить заказ
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'orders' && (
+          <div>
+            <h2 className="text-2xl font-bold mb-6">Заказы</h2>
+            {orders.length === 0 ? (
+              <Card className="p-12 text-center">
+                <div className="text-6xl mb-4">📦</div>
+                <p className="text-lg text-muted-foreground">Заказов пока нет</p>
+              </Card>
+            ) : (
+              <div className="space-y-4">
+                {orders.map(order => (
+                  <Card key={order.id}>
+                    <CardHeader>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <CardTitle className="text-lg">Заказ #{order.id}</CardTitle>
+                          <CardDescription>{new Date(order.date).toLocaleDateString('ru-RU')}</CardDescription>
+                        </div>
+                        <Badge>
+                          {order.status === 'delivered' && 'Доставлен'}
+                          {order.status === 'cooking' && 'Готовится'}
+                          {order.status === 'on-the-way' && 'В пути'}
+                          {order.status === 'preparing' && 'Принят'}
+                        </Badge>
                       </div>
-                    </div>
-                    {(promoDiscount > 0 || bonusDiscount > 0) && (
-                      <div className="bg-accent/20 rounded-lg p-2 mb-4 text-center">
-                        <p className="text-sm font-semibold">
-                          🎉 Вы экономите {promoDiscount + bonusDiscount} ₽!
-                        </p>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {order.items.map(item => (
+                          <div key={item.id} className="flex justify-between text-sm">
+                            <span>{item.name} x{item.quantity}</span>
+                            <span>{item.price * item.quantity} ₽</span>
+                          </div>
+                        ))}
                       </div>
-                    )}
-                    <Button
-                      size="lg"
-                      variant="secondary"
-                      className="w-full text-lg font-bold"
-                      onClick={() => {
-                        const earnedBonus = Math.round(cartTotal * 0.1);
-                        toast.success(`🎉 Заказ оформлен! Доставим через 30 минут. Начислено ${earnedBonus} бонусов!`);
-                        if (useBonuses) {
-                          setUserBonus(userBonus - bonusDiscount + earnedBonus);
-                        } else {
-                          setUserBonus(userBonus + earnedBonus);
-                        }
-                        setCart([]);
-                        setAppliedPromo(null);
-                        setUseBonuses(false);
-                        setPromoCode('');
-                      }}
-                    >
-                      Оформить заказ
-                    </Button>
-                  </CardContent>
-                </Card>
+                      <Separator className="my-3" />
+                      <div className="flex justify-between font-bold">
+                        <span>Итого:</span>
+                        <span>{order.total} ₽</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
             )}
           </div>
         )}
 
         {activeTab === 'profile' && (
-          <div className="animate-fade-in space-y-6">
-            <Card className="bg-gradient-to-br from-secondary to-primary text-primary-foreground">
-              <CardContent className="p-8">
-                <div className="flex items-center gap-6">
-                  <Avatar className="h-24 w-24 border-4 border-background">
-                    <AvatarImage src="/placeholder.svg" />
-                    <AvatarFallback className="text-3xl">👤</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <h2 className="text-3xl font-black mb-2">Игрок #1234</h2>
-                    <p className="text-lg opacity-90">+7 (999) 123-45-67</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-2xl flex items-center gap-2">
-                  <span>🎮</span> Система лояльности
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="bg-muted rounded-2xl p-6">
-                  <p className="text-sm text-muted-foreground mb-2">Ваши бонусы</p>
-                  <p className="text-5xl font-black text-primary">{userBonus} 🪙</p>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-secondary/20 rounded-xl p-4 text-center">
-                    <p className="text-3xl font-bold">12</p>
-                    <p className="text-sm text-muted-foreground">Заказов</p>
-                  </div>
-                  <div className="bg-accent/20 rounded-xl p-4 text-center">
-                    <p className="text-3xl font-bold">5.0</p>
-                    <p className="text-sm text-muted-foreground">Рейтинг</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-2xl">⚙️ Настройки</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Button variant="outline" className="w-full justify-start text-lg">
-                  <Icon name="MapPin" size={20} className="mr-3" />
-                  Адреса доставки
-                </Button>
-                <Button variant="outline" className="w-full justify-start text-lg">
-                  <Icon name="CreditCard" size={20} className="mr-3" />
-                  Способы оплаты
-                </Button>
-                <Button variant="outline" className="w-full justify-start text-lg">
-                  <Icon name="Bell" size={20} className="mr-3" />
-                  Уведомления
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {activeTab === 'orders' && (
-          <div className="animate-fade-in">
-            <h2 className="text-4xl font-black mb-8">История заказов 📦</h2>
-            <div className="space-y-4">
-              {orders.map(order => (
-                <Card key={order.id} className="hover:shadow-lg transition-shadow">
+          <div>
+            {user ? (
+              <div className="space-y-4">
+                <Card>
                   <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <CardTitle className="text-xl">Заказ #{order.id}</CardTitle>
-                        <CardDescription>{new Date(order.date).toLocaleDateString('ru-RU')}</CardDescription>
-                      </div>
-                      <Badge variant={order.status === 'delivered' ? 'default' : 'secondary'} className="animate-pulse">
-                        {order.status === 'delivered' && '✅ Доставлен'}
-                        {order.status === 'cooking' && '👨‍🍳 Готовится'}
-                        {order.status === 'on-the-way' && '🚚 В пути'}
-                        {order.status === 'preparing' && '📋 Принят'}
-                      </Badge>
-                    </div>
+                    <CardTitle>{user.name}</CardTitle>
+                    <CardDescription>{user.phone}</CardDescription>
+                  </CardHeader>
+                </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Бонусы</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {order.status === 'on-the-way' && order.estimatedTime && (
-                      <div className="mb-6 bg-gradient-to-r from-primary/20 to-accent/20 rounded-2xl p-6 border-2 border-primary animate-scale-in">
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center gap-3">
-                            <div className="text-4xl animate-bounce">🚚</div>
-                            <div>
-                              <p className="text-lg font-bold">Курьер в пути!</p>
-                              <p className="text-sm text-muted-foreground">Заказ доставляется</p>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-3xl font-black text-primary">{order.estimatedTime}</p>
-                            <p className="text-sm text-muted-foreground">минут</p>
-                          </div>
-                        </div>
-                        
-                        <div className="relative bg-muted rounded-xl p-4 mb-4">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs font-semibold">Маршрут доставки</span>
-                            <Button 
-                              size="sm" 
-                              variant="ghost"
-                              onClick={() => setTrackingOrderId(trackingOrderId === order.id ? null : order.id)}
-                            >
-                              <Icon name={trackingOrderId === order.id ? "ChevronUp" : "MapPin"} size={16} />
-                            </Button>
-                          </div>
-                          
-                          {trackingOrderId === order.id && (
-                            <div className="mt-4 space-y-3 animate-fade-in">
-                              <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
-                                  <Icon name="Home" className="text-white" size={16} />
-                                </div>
-                                <div>
-                                  <p className="font-semibold">Пиццерия PizzaGame</p>
-                                  <p className="text-xs text-muted-foreground">ул. Пушкина, 15</p>
-                                </div>
-                              </div>
-                              
-                              <div className="relative pl-4 border-l-2 border-dashed border-primary ml-4 py-2">
-                                <div className="absolute -left-2 top-1/2 w-4 h-4 bg-primary rounded-full animate-pulse"></div>
-                                <p className="text-sm font-semibold">🚚 Курьер Иван</p>
-                                <p className="text-xs text-muted-foreground">Движется к вам</p>
-                              </div>
-                              
-                              <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center">
-                                  <Icon name="MapPin" className="text-white" size={16} />
-                                </div>
-                                <div>
-                                  <p className="font-semibold">Ваш адрес</p>
-                                  <p className="text-xs text-muted-foreground">ул. Ленина, 42, кв. 15</p>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                          
-                          <div className="mt-3 bg-background rounded-lg p-3">
-                            <div className="flex justify-between text-xs mb-1">
-                              <span>🏠 Пиццерия</span>
-                              <span>📍 Вы</span>
-                            </div>
-                            <div className="relative h-2 bg-muted-foreground/20 rounded-full overflow-hidden">
-                              <div 
-                                className="absolute top-0 left-0 h-full bg-gradient-to-r from-primary to-accent rounded-full transition-all duration-1000"
-                                style={{ width: `${100 - (order.estimatedTime / 30 * 100)}%` }}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="outline" className="flex-1">
-                            <Icon name="Phone" size={16} className="mr-2" />
-                            Позвонить курьеру
-                          </Button>
-                          <Button size="sm" variant="outline" className="flex-1">
-                            <Icon name="MessageSquare" size={16} className="mr-2" />
-                            Написать
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                    
-                    <div className="space-y-2">
-                      {order.items.map(item => (
-                        <div key={item.id} className="flex justify-between items-center">
-                          <span className="flex items-center gap-2">
-                            <span className="text-2xl">{item.emoji}</span>
-                            <span>{item.name}</span>
-                            <span className="text-muted-foreground">x{item.quantity}</span>
-                          </span>
-                          <span className="font-semibold">{item.price * item.quantity} ₽</span>
-                        </div>
-                      ))}
-                    </div>
-                    <Separator className="my-4" />
-                    <div className="flex justify-between items-center text-xl font-bold">
-                      <span>Итого:</span>
-                      <span className="text-primary">{order.total} ₽</span>
-                    </div>
-                  </CardContent>
-                  <CardFooter>
-                    <Button variant="outline" className="w-full" onClick={() => {
-                      order.items.forEach(item => addToCart(item));
-                      setActiveTab('cart');
-                    }}>
-                      <Icon name="RotateCcw" size={18} className="mr-2" />
-                      Повторить заказ
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'reviews' && (
-          <div className="animate-fade-in">
-            <h2 className="text-4xl font-black mb-8">Отзывы ⭐</h2>
-            <div className="space-y-4">
-              {mockReviews.map(review => (
-                <Card key={review.id} className="hover:shadow-lg transition-shadow">
-                  <CardHeader>
-                    <div className="flex items-center gap-4">
-                      <Avatar>
-                        <AvatarFallback className="text-xl">👤</AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <CardTitle className="text-lg">{review.userName}</CardTitle>
-                        <CardDescription>{new Date(review.date).toLocaleDateString('ru-RU')}</CardDescription>
-                      </div>
-                      <div className="flex gap-1">
-                        {[...Array(5)].map((_, i) => (
-                          <Icon
-                            key={i}
-                            name="Star"
-                            size={18}
-                            className={i < review.rating ? 'text-yellow-500 fill-yellow-500' : 'text-gray-300'}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-base">{review.comment}</p>
+                    <div className="text-4xl font-bold text-primary">{user.bonus} ₽</div>
+                    <p className="text-sm text-muted-foreground mt-2">Доступно для списания</p>
                   </CardContent>
                 </Card>
-              ))}
-            </div>
+              </div>
+            ) : (
+              <Card className="p-12 text-center">
+                <div className="text-6xl mb-4">👤</div>
+                <p className="text-lg text-muted-foreground mb-4">Войдите в аккаунт</p>
+                <Button onClick={() => setShowAuth(true)}>
+                  Войти
+                </Button>
+              </Card>
+            )}
           </div>
         )}
       </main>
 
-      <footer className="bg-card border-t-4 border-primary mt-16 py-8">
-        <div className="container mx-auto px-4 text-center">
-          <div className="text-4xl mb-4">🍕</div>
-          <p className="text-xl font-bold mb-2">PizzaGame</p>
-          <p className="text-muted-foreground">Вкусно играем с 2024 года!</p>
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t z-40">
+        <div className="container mx-auto px-4">
+          <div className="flex justify-around py-2">
+            <Button
+              variant="ghost"
+              onClick={() => setActiveTab('menu')}
+              className={`flex-col h-auto py-2 ${activeTab === 'menu' ? 'text-primary' : 'text-muted-foreground'}`}
+            >
+              <Icon name="Home" size={20} />
+              <span className="text-xs mt-1">Меню</span>
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => setActiveTab('cart')}
+              className={`flex-col h-auto py-2 relative ${activeTab === 'cart' ? 'text-primary' : 'text-muted-foreground'}`}
+            >
+              <Icon name="ShoppingCart" size={20} />
+              <span className="text-xs mt-1">Корзина</span>
+              {cartItemsCount > 0 && (
+                <span className="absolute top-1 right-6 h-4 w-4 rounded-full bg-primary text-white text-xs flex items-center justify-center">
+                  {cartItemsCount}
+                </span>
+              )}
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => setActiveTab('orders')}
+              className={`flex-col h-auto py-2 ${activeTab === 'orders' ? 'text-primary' : 'text-muted-foreground'}`}
+            >
+              <Icon name="Package" size={20} />
+              <span className="text-xs mt-1">Заказы</span>
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => setActiveTab('profile')}
+              className={`flex-col h-auto py-2 ${activeTab === 'profile' ? 'text-primary' : 'text-muted-foreground'}`}
+            >
+              <Icon name="User" size={20} />
+              <span className="text-xs mt-1">Профиль</span>
+            </Button>
+          </div>
         </div>
-      </footer>
+      </nav>
 
       {showConstructor && (
         <PizzaConstructor
@@ -840,15 +576,28 @@ export default function Index() {
             addToCart(pizza);
           }}
           onClose={() => setShowConstructor(false)}
+          cartItemsCount={cartItemsCount}
+          onOpenCart={() => {
+            setShowConstructor(false);
+            setActiveTab('cart');
+          }}
         />
       )}
 
-      <PromoNotification
-        onCopyPromoCode={(code) => {
-          setPromoCode(code);
-          toast.success(`🎟️ Промокод ${code} скопирован! Примените его в корзине`);
-        }}
-      />
+      {showAuth && (
+        <AuthModal
+          onAuth={handleAuth}
+          onClose={() => setShowAuth(false)}
+        />
+      )}
+
+      {showCheckout && (
+        <CheckoutModal
+          total={cartTotal}
+          onConfirm={handleOrderConfirm}
+          onClose={() => setShowCheckout(false)}
+        />
+      )}
     </div>
   );
 }
