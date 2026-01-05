@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import Icon from '@/components/ui/icon';
 import { toast } from 'sonner';
+import PizzaConstructor from '@/components/PizzaConstructor';
 
 type MenuItem = {
   id: number;
@@ -121,6 +122,7 @@ export default function Index() {
   const [userBonus, setUserBonus] = useState(450);
   const [orders, setOrders] = useState<Order[]>(mockOrders);
   const [trackingOrderId, setTrackingOrderId] = useState<number | null>(null);
+  const [showConstructor, setShowConstructor] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -142,14 +144,20 @@ export default function Index() {
     return () => clearInterval(interval);
   }, []);
 
-  const addToCart = (item: MenuItem) => {
-    const existingItem = cart.find(i => i.id === item.id);
+  const addToCart = (item: MenuItem | { name: string; price: number; description: string; emoji: string }) => {
+    const menuItem = 'id' in item ? item : {
+      ...item,
+      id: Date.now(),
+      category: 'pizza' as const,
+    };
+    
+    const existingItem = cart.find(i => i.id === menuItem.id);
     if (existingItem) {
-      setCart(cart.map(i => i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i));
+      setCart(cart.map(i => i.id === menuItem.id ? { ...i, quantity: i.quantity + 1 } : i));
     } else {
-      setCart([...cart, { ...item, quantity: 1 }]);
+      setCart([...cart, { ...menuItem, quantity: 1 }]);
     }
-    toast.success(`${item.emoji} ${item.name} добавлена в корзину!`);
+    toast.success(`${menuItem.emoji} ${menuItem.name} добавлена в корзину!`);
   };
 
   const removeFromCart = (id: number) => {
@@ -268,6 +276,25 @@ export default function Index() {
               </div>
             </section>
 
+            <section className="bg-gradient-to-br from-secondary/30 to-primary/20 rounded-3xl p-8 border-4 border-primary/20">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-3xl font-black flex items-center gap-2">
+                  <span>🎨</span> Собери свою пиццу!
+                </h3>
+              </div>
+              <p className="text-lg mb-6 text-muted-foreground">
+                Создай уникальную пиццу из 25+ ингредиентов на свой вкус!
+              </p>
+              <Button
+                size="lg"
+                onClick={() => setShowConstructor(true)}
+                className="text-lg font-bold"
+              >
+                <Icon name="Sparkles" size={20} className="mr-2" />
+                Открыть конструктор
+              </Button>
+            </section>
+
             <section>
               <h3 className="text-3xl font-black mb-6 flex items-center gap-2">
                 <span>🔥</span> Популярные позиции
@@ -290,7 +317,17 @@ export default function Index() {
 
         {activeTab === 'menu' && (
           <div className="animate-fade-in">
-            <h2 className="text-4xl font-black mb-8">Меню 🍕</h2>
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-4xl font-black">Меню 🍕</h2>
+              <Button
+                size="lg"
+                onClick={() => setShowConstructor(true)}
+                className="font-bold"
+              >
+                <Icon name="Sparkles" size={20} className="mr-2" />
+                Собрать свою пиццу
+              </Button>
+            </div>
             <Tabs defaultValue="pizza" className="w-full">
               <TabsList className="grid w-full grid-cols-4 mb-8 h-auto">
                 <TabsTrigger value="pizza" className="text-lg font-semibold py-3">🍕 Пиццы</TabsTrigger>
@@ -654,6 +691,15 @@ export default function Index() {
           <p className="text-muted-foreground">Вкусно играем с 2024 года!</p>
         </div>
       </footer>
+
+      {showConstructor && (
+        <PizzaConstructor
+          onAddToCart={(pizza) => {
+            addToCart(pizza);
+          }}
+          onClose={() => setShowConstructor(false)}
+        />
+      )}
     </div>
   );
 }
